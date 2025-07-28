@@ -1,0 +1,95 @@
+.todo-item {
+  background-color: #2c2c2c;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.todo-item:hover {
+  background-color: #383838;
+}
+
+.todo-item.completed {
+  background-color: #3d3d3d;
+}
+
+.todo-item .checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  margin-right: 15px;
+  cursor: pointer;
+  position: relative;
+}
+
+.todo-item.completed .checkbox {
+  background-color: #e53935;
+  border-color: #e53935;
+}
+
+.todo-item.completed .checkbox::after {
+  content: '✔';
+  color: #fff;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+}
+
+.todo-item .text {
+  flex-grow: 1;
+  text-align: left;
+  font-weight: bold;
+}
+
+.todo-item.completed .text {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.todo-details {
+  display: flex;
+  align-items: center;
+}
+
+.todo-item .points {
+  margin: 0 15px;
+  font-size: 0.9em;
+  color: #aaa;
+}
+
+.todo-item .due-date {
+  margin: 0 15px;
+  font-size: 0.9em;
+  color: #aaa;
+}
+
+.todo-item .due-date.overdue {
+  color: #e53935;
+}
+
+.todo-item .edit-button,
+.todo-item .delete-button {
+  background-color: #555;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: 10px;
+}
+
+.todo-item .edit-button:hover,
+.todo-item .delete-button:hover {
+  background-color: #e53935;
+}

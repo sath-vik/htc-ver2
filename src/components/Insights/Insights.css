@@ -1,0 +1,25 @@
+.insights-container {
+  margin: 20px auto;
+  padding: 20px;
+  max-width: 500px;
+  background: #f7f7f7;
+  border-radius: 8px;
+  color: #333;
+}
+
+.insights-container h2 {
+  text-align: center;
+}
+
+.insights-container ul {
+  list-style: none;
+  padding: 0;
+}
+
+.insights-container li {
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 10px 20px;
+  margin-bottom: 10px;
+}

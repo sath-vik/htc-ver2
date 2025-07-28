@@ -1,0 +1,43 @@
+.tooltip-container {
+    position: relative;
+    display: inline-flex; /* Use inline-flex to properly contain the button */
+    align-items: center;
+    justify-content: center;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 10px;
+    z-index: 101;
+    white-space: nowrap;
+
+    /* Position the tooltip below and to the left of the container */
+    top: 130%; /* A little space below the button */
+    right: 0;
+
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+/* Show the tooltip on hover */
+.tooltip-container:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Simple arrow pointing up to the button */
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    bottom: 100%; /* At the top of the tooltip */
+    right: 10px;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #333 transparent;
+}
