@@ -43,6 +43,13 @@ const AddTodoModal = ({ onAdd, onCancel, todo }) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const calendarRef = useRef(null);
   const timePickerRef = useRef(null);
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    if (nameInputRef.current) {
+        nameInputRef.current.focus();
+    }
+  }, []);
 
   const incrementPoints = () => setPoints(prev => (parseFloat(prev) + 0.1).toFixed(1));
   const decrementPoints = () => setPoints(prev => (Math.max(0, parseFloat(prev) - 0.1)).toFixed(1));
@@ -181,6 +188,7 @@ const AddTodoModal = ({ onAdd, onCancel, todo }) => {
         <h2>{todo ? `Edit "${todo.text}"` : 'Add a New Task'}</h2>
         <form onSubmit={handleSubmit}>
           <input
+            ref={nameInputRef}
             type="text"
             value={text}
             onChange={handleTextChange}

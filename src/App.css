@@ -124,6 +124,7 @@ html, body, #root {
   padding-top: 20px;
   flex-grow: 1;
   overflow-y: auto; /* This will handle scrolling for Habits and Todos */
+  overflow-x: hidden; /* This will prevent the slide-in panel from causing a horizontal scrollbar */
   display: flex;
   flex-direction: column;
   position: relative;

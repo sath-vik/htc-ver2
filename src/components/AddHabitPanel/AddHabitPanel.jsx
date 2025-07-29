@@ -38,6 +38,13 @@ const AddHabitPanel = ({ onAddHabit, onCancel, habit }) => {
     const [penalty, setPenalty] = useState(0);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiPickerRef = useRef(null);
+    const nameInputRef = useRef(null);
+
+    useEffect(() => {
+        if (nameInputRef.current) {
+            nameInputRef.current.focus();
+        }
+    }, []);
 
     const incrementGoal = () => setGoal(prev => Math.max(1, prev + 1));
     const decrementGoal = () => setGoal(prev => Math.max(1, prev - 1));
@@ -118,7 +125,7 @@ const AddHabitPanel = ({ onAddHabit, onCancel, habit }) => {
                 <h3>{habit ? `Edit "${habit.text}"` : 'Add new habit'}</h3>
                 <label>
                     Name:
-                    <input type="text" value={habitName} onChange={(e) => setHabitName(e.target.value)} required />
+                    <input ref={nameInputRef} type="text" value={habitName} onChange={(e) => setHabitName(e.target.value)} required />
                 </label>
                 <div className="icon-picker-container">
                     <label>Choose icon:</label>
