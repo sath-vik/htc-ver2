@@ -49,6 +49,37 @@
   box-sizing: border-box;
 }
 
+.icon-picker-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.icon-picker-container label {
+    margin-right: 10px;
+    margin-bottom: 0;
+}
+
+.icon-preview {
+    cursor: pointer;
+    font-size: 24px;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.icon-preview:hover {
+    background-color: #444;
+}
+
+.emoji-picker-wrapper {
+    position: absolute;
+    top: 40px;
+    left: -100px;
+    z-index: 10;
+}
+
 .add-habit-panel .points-input-container {
   margin-bottom: 10px;
 }
@@ -146,4 +177,28 @@
 .panel-actions .add-btn {
   background-color: #e53935;
   color: white;
+}
+
+/* --- Emoji Picker Specific Styles --- */
+
+.emoji-picker-wrapper .EmojiPickerReact {
+    --epr-bg-color: #2a2a2a;
+    --epr-category-label-bg-color: #2a2a2a;
+    --epr-picker-border-color: #444;
+    --epr-search-input-bg-color: #333;
+    --epr-search-input-color: #fff;
+    --epr-search-input-placeholder-color: #888;
+}
+
+.emoji-picker-wrapper .EmojiPickerReact .epr-search-container input.epr-search {
+    padding-left: 10px !important;
+}
+
+.emoji-picker-wrapper .EmojiPickerReact .epr-search-container .epr-search-icon {
+    display: none !important;
+}
+
+.emoji-picker-wrapper .EmojiPickerReact .epr-category-nav,
+.emoji-picker-wrapper .EmojiPickerReact .epr-category-label {
+    display: none !important;
 }

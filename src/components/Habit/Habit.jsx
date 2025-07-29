@@ -2,13 +2,19 @@ import React, { useState } from 'react';
 import { FiTrendingUp, FiRefreshCw, FiX, FiMoreHorizontal } from 'react-icons/fi';
 import './Habit.css';
 import ContextMenu from '../ContextMenu/ContextMenu';
+import HabitStatsModal from '../HabitStatsModal/HabitStatsModal';
 
 const Habit = ({ habit, categories, completeHabit, resetHabit, onEdit, onDelete, onMoveToCategory }) => {
-    const isCompleted = habit.dailyCompletions >= habit.targetCompletions;
+    const getTodayString = () => new Date().toISOString().split('T')[0];
+    const todaysProgress = habit.progress[getTodayString()] || 0;
+    const isCompleted = todaysProgress >= habit.goal;
+
     const [isAnimating, setIsAnimating] = useState(false);
     const [contextMenu, setContextMenu] = useState(null);
+    const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
-    const goToStats = () => alert(`Navigating to stats for ${habit.text}`);
+    const openStatsModal = () => setIsStatsModalOpen(true);
+    const closeStatsModal = () => setIsStatsModalOpen(false);
 
     const handleActionClick = (e, action) => {
         e.stopPropagation();
@@ -26,7 +32,7 @@ const Habit = ({ habit, categories, completeHabit, resetHabit, onEdit, onDelete,
     const handleContextMenu = (event) => {
         event.preventDefault();
         event.stopPropagation();
-        closeContextMenu(); 
+        closeContextMenu();
 
         if (categories.length > 0) {
             setContextMenu({
@@ -62,7 +68,7 @@ const Habit = ({ habit, categories, completeHabit, resetHabit, onEdit, onDelete,
                 <div className="habit-progress-container">
                     <span className="habit-coins">💰 {habit.coins}</span>
                     <span className="habit-progress">
-                        {habit.dailyCompletions}/{habit.targetCompletions}
+                        {todaysProgress}/{habit.goal}
                     </span>
                 </div>
 
@@ -74,7 +80,7 @@ const Habit = ({ habit, categories, completeHabit, resetHabit, onEdit, onDelete,
                         <div className="hover-action" onClick={(e) => handleActionClick(e, () => onEdit(habit))}>
                             <FiMoreHorizontal />
                         </div>
-                        <div className="hover-action" onClick={(e) => handleActionClick(e, goToStats)}>
+                        <div className="hover-action" onClick={(e) => handleActionClick(e, openStatsModal)}>
                             <FiTrendingUp />
                         </div>
                         <div className="hover-action" onClick={(e) => handleActionClick(e, () => resetHabit(habit.id))}>
@@ -89,6 +95,12 @@ const Habit = ({ habit, categories, completeHabit, resetHabit, onEdit, onDelete,
                     y={contextMenu.y}
                     options={contextMenu.options}
                     onClose={closeContextMenu}
+                />
+            )}
+            {isStatsModalOpen && (
+                <HabitStatsModal
+                    habit={habit}
+                    onClose={closeStatsModal}
                 />
             )}
         </>

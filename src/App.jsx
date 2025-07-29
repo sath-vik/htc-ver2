@@ -36,6 +36,8 @@ function App() {
 
   const filterMenuRef = useRef(null);
 
+  const getTodayString = () => new Date().toISOString().split('T')[0];
+
   const filterTitles = {
     all: 'All Habits',
     ongoing: 'On-going Habits',
@@ -45,10 +47,28 @@ function App() {
   const headerTitle = activeView === 'habits' ? filterTitles[filterType] : (activeView.charAt(0).toUpperCase() + activeView.slice(1));
 
   useEffect(() => {
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+
+    const mockProgress = (goal, initialTodayValue = 0) => {
+        let progress = {};
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const dateString = date.toISOString().split('T')[0];
+            if (dateString === todayString) {
+                progress[dateString] = initialTodayValue;
+            } else {
+                progress[dateString] = 0;
+            }
+        }
+        return progress;
+    };
+
     setHabits([
-      { id: 1, text: 'Exercise', icon: '🏃', coins: 0.3, penalty: 0.1, targetCompletions: 10, dailyCompletions: 3, category: 'Daily' },
-      { id: 2, text: 'Read a book', icon: '📚', coins: 0.5, penalty: 0.2, targetCompletions: 1, dailyCompletions: 1, category: 'Study' },
-      { id: 3, text: 'Meditate', icon: '🧘', coins: 0.2, penalty: 0.1, targetCompletions: 1, dailyCompletions: 0, category: 'Health' },
+        { id: 1, text: 'Exercise', icon: '🏃', coins: 0.3, penalty: 0.1, goal: 10, category: 'Daily', progress: mockProgress(10, 3) },
+        { id: 2, text: 'Read a book', icon: '📚', coins: 0.5, penalty: 0.2, goal: 1, category: 'Study', progress: mockProgress(1, 1) },
+        { id: 3, text: 'Meditate', icon: '🧘', coins: 0.2, penalty: 0.1, goal: 1, category: 'Health', progress: mockProgress(1, 0) },
     ]);
   }, []);
 
@@ -142,13 +162,23 @@ function App() {
     };
   }, [showFilterMenu]);
 
+  const getTodaysProgress = (habit) => {
+    const todayStr = getTodayString();
+    return habit.progress[todayStr] || 0;
+  }
 
   const completeHabit = (id) => {
     let coinGained = 0;
+    const todayStr = getTodayString();
+
     setHabits(habits.map(habit => {
-      if (habit.id === id && habit.dailyCompletions < habit.targetCompletions) {
-        coinGained = habit.coins;
-        return { ...habit, dailyCompletions: habit.dailyCompletions + 1 };
+      if (habit.id === id) {
+        const todaysProgress = getTodaysProgress(habit);
+        if (todaysProgress < habit.goal) {
+          coinGained = habit.coins;
+          const newProgress = { ...habit.progress, [todayStr]: todaysProgress + 1 };
+          return { ...habit, progress: newProgress };
+        }
       }
       return habit;
     }));
@@ -164,13 +194,20 @@ function App() {
 
   const resetHabit = (id) => {
     let coinsToDeduct = 0;
+    const todayStr = getTodayString();
+
     setHabits(habits.map(habit => {
       if (habit.id === id) {
-        coinsToDeduct = habit.coins * habit.dailyCompletions;
-        return { ...habit, dailyCompletions: 0 };
+        const todaysProgress = getTodaysProgress(habit);
+        if (todaysProgress > 0) {
+            coinsToDeduct = habit.coins * todaysProgress;
+            const newProgress = { ...habit.progress, [todayStr]: 0 };
+            return { ...habit, progress: newProgress };
+        }
       }
       return habit;
     }));
+
     if (coinsToDeduct > 0) {
       setTotalCoins(prevCoins => prevCoins - coinsToDeduct);
     }
@@ -194,7 +231,12 @@ function App() {
   };
 
   const addHabit = (newHabit) => {
-    const habitToAdd = { ...newHabit, id: Date.now(), dailyCompletions: 0, completions: [], category: activeCategory };
+    const habitToAdd = { 
+        ...newHabit, 
+        id: Date.now(), 
+        progress: {}, 
+        category: activeCategory 
+    };
     setHabits([...habits, habitToAdd]);
     setIsAddPanelOpen(false);
   };
@@ -306,7 +348,9 @@ function App() {
   };
 
   const filteredHabits = habits.filter(habit => {
-    const isCompleted = habit.dailyCompletions >= habit.targetCompletions;
+    const todaysProgress = getTodaysProgress(habit);
+    const isCompleted = todaysProgress >= habit.goal;
+    
     if (habit.category !== activeCategory) return false;
     if (!showCompleted && isCompleted) return false;
     if (filterType === 'ongoing' && isCompleted) return false;
