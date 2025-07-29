@@ -10,6 +10,7 @@ const CHUNK_SIZE = 30; // Number of days to load at a time
 const DAY_COLUMN_WIDTH = 150; // The width of a single day column in pixels
 const HOUR_ROW_HEIGHT = 80; // The height of a single hour row in pixels
 const TIME_COLUMN_WIDTH = 70; // The width of the time column on the left
+const CLICK_DRAG_THRESHOLD = 5; // Pixels to distinguish a click from a drag
 
 // Generates a chunk of dates before or after a given date
 const generateDateChunk = (baseDate, direction) => {
@@ -71,8 +72,9 @@ const CalendarView = () => {
   const fetchingLock = useRef(false);
 
   const [events, setEvents] = useState([]);
-  const [newEvent, setNewEvent] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [dragInfo, setDragInfo] = useState(null);
+  const mouseDownPos = useRef(null);
 
 
   const gridRef = useRef(null);
@@ -83,6 +85,7 @@ const CalendarView = () => {
 
   // Synchronize header scroll with the grid scroll and handle infinite scroll
   const handleGridScroll = () => {
+    if (dragInfo) return;
     // Immediate updates on every scroll event
     if (headerRef.current) {
       headerRef.current.scrollLeft = gridRef.current.scrollLeft;
@@ -181,6 +184,35 @@ const CalendarView = () => {
     element.addEventListener('wheel', handleWheel);
     return () => element.removeEventListener('wheel', handleWheel);
   }, []);
+
+  // Effect for handling the delete key and auto-canceling new events
+  useEffect(() => {
+    const handleGlobalInteraction = (e) => {
+        if (activeEvent) {
+            if (e.key === 'Delete' && !activeEvent.id.startsWith('new-')) {
+                handleDeleteEvent(activeEvent.id);
+            }
+            
+            if (
+                activeEvent.id.startsWith('new-') &&
+                activeEvent.title === '' &&
+                !dragInfo && 
+                !e.target.closest('.event-creator-panel') &&
+                !e.target.closest('.event-block')
+            ) {
+                setActiveEvent(null);
+            }
+        }
+    };
+    
+    window.addEventListener('keydown', handleGlobalInteraction);
+    window.addEventListener('mousedown', handleGlobalInteraction);
+
+    return () => {
+        window.removeEventListener('keydown', handleGlobalInteraction);
+        window.removeEventListener('mousedown', handleGlobalInteraction);
+    };
+  }, [activeEvent, dragInfo]);
   
 
   // Effect to handle all initial setup: scrolling to today/time and setting up the timeline interval.
@@ -279,88 +311,152 @@ const CalendarView = () => {
   };
   
   const handleMouseDown = (e) => {
-    if (e.button !== 0) return; // Only left-click
-  
-    const gridRect = gridRef.current.getBoundingClientRect();
-    // Calculate x relative to the start of the days grid (not the container)
-    const x = e.clientX - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
-    const y = e.clientY - gridRect.top + gridRef.current.scrollTop;
+    if (e.button !== 0 || dragInfo) return; 
 
-    if (x < 0) return; // Ignore clicks on the time column
+    if (e.target.closest('.event-block')) return;
+
+    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+  };
   
-    const startDate = getDateFromPosition(x, y);
-    if (!startDate) return;
+  const handleEventMouseDown = (e, event) => {
+    e.stopPropagation(); 
+    if (e.button !== 0 || dragInfo) return;
   
-    setNewEvent({
-      id: `new-${Date.now()}`,
-      start: startDate,
-      end: startDate,
-      title: '',
-      description: '',
+    const startY = e.clientY - gridRef.current.getBoundingClientRect().top + gridRef.current.scrollTop;
+    const eventStartInMinutes = event.start.getHours() * 60 + event.start.getMinutes();
+    const clickedTimeInMinutes = (startY / HOUR_ROW_HEIGHT) * 60;
+    
+    setActiveEvent(event);
+    setDragInfo({
+        mode: 'move',
+        eventId: event.id,
+        offset: clickedTimeInMinutes - eventStartInMinutes,
     });
-    setIsDragging(true);
   };
-  
+
   const handleMouseMove = (e) => {
-    if (!isDragging || !newEvent) return;
-  
-    const gridRect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
-    const y = e.clientY - gridRect.top + gridRef.current.scrollTop;
-  
-    const currentDate = getDateFromPosition(x, y);
-    if (!currentDate) return;
-  
-    setNewEvent(prev => ({
-      ...prev,
-      end: currentDate,
-    }));
+    if(dragInfo) { // If we are already dragging, continue
+        const gridRect = gridRef.current.getBoundingClientRect();
+        const x = e.clientX - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
+        const y = e.clientY - gridRect.top + gridRef.current.scrollTop;
+      
+        if (dragInfo.mode === 'create') {
+            const currentDate = getDateFromPosition(x, y);
+            if (!currentDate) return;
+            setActiveEvent(prev => ({ ...prev, end: currentDate }));
+        } else if (dragInfo.mode === 'move') {
+            const duration = (activeEvent.end.getTime() - activeEvent.start.getTime());
+            const adjustedY = y - (dragInfo.offset * HOUR_ROW_HEIGHT / 60);
+            const newStartDate = getDateFromPosition(x, adjustedY);
+            if (!newStartDate) return;
+            const newEndDate = new Date(newStartDate.getTime() + duration);
+            setActiveEvent(prev => ({ ...prev, start: newStartDate, end: newEndDate }));
+        }
+    } else if (mouseDownPos.current) { // If a mousedown has happened but we are not yet dragging
+        const distance = Math.sqrt(
+            Math.pow(e.clientX - mouseDownPos.current.x, 2) +
+            Math.pow(e.clientY - mouseDownPos.current.y, 2)
+        );
+
+        if (distance > CLICK_DRAG_THRESHOLD) {
+            const gridRect = gridRef.current.getBoundingClientRect();
+            const x = mouseDownPos.current.x - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
+            const y = mouseDownPos.current.y - gridRect.top + gridRef.current.scrollTop;
+            const startDate = getDateFromPosition(x, y);
+            
+            if (startDate) {
+                const newEvent = {
+                    id: `new-${Date.now()}`,
+                    start: startDate,
+                    end: startDate,
+                    title: '',
+                    description: '',
+                };
+                setActiveEvent(newEvent);
+                setDragInfo({ mode: 'create', eventId: newEvent.id });
+            }
+            mouseDownPos.current = null; // We've started dragging, so clear the initial position
+        }
+    }
   };
   
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMouseUp = (e) => {
+    if (dragInfo) {
+      const start = activeEvent.start;
+      const end = activeEvent.end;
+  
+      if (dragInfo.mode === 'create') {
+        if (start.getTime() === end.getTime()) {
+          setActiveEvent(null);
+        } else {
+          setEvents(prev => [...prev, activeEvent]);
+        }
+      } else if (dragInfo.mode === 'move') {
+        setEvents(prev => prev.map(ev => ev.id === activeEvent.id ? activeEvent : ev));
+      }
+      setDragInfo(null);
+    }
+    mouseDownPos.current = null; // Clear on any mouse up
   };
 
   const handleSaveEvent = (eventData) => {
-    setEvents(prev => [...prev.filter(e => e.id !== eventData.id), eventData]);
-    setNewEvent(null);
-  };
-
-  const handleCancelCreateEvent = () => {
-    setNewEvent(null);
-  };
-
-  const renderEvent = (event) => {
-    const startIndex = dates.findIndex(d => d.toDateString() === event.start.toDateString());
-    if (startIndex === -1) return null;
-
-    let start = event.start;
-    let end = event.end;
-
-    if(end < start) {
-        [start, end] = [end, start];
+    const isNew = eventData.id.startsWith('new-');
+    if (isNew) {
+        setEvents(prev => [...prev.filter(e => e.id !== eventData.id), eventData]);
+    } else {
+        setEvents(prev => prev.map(e => e.id === eventData.id ? eventData : e));
     }
+    setActiveEvent(null);
+};
+
+  const handleCancelEvent = () => {
+    if (activeEvent && activeEvent.id.startsWith('new-')) {
+    } else if(activeEvent) {
+        const originalEvent = events.find(e => e.id === activeEvent.id);
+        if(originalEvent) setActiveEvent(originalEvent);
+    }
+    setActiveEvent(null);
+  };
+
+  const handleDeleteEvent = (eventId) => {
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    setActiveEvent(null);
+  }
+
+  const renderEvent = (event, isTemporary = false) => {
+    const isMoving = dragInfo?.mode === 'move' && dragInfo?.eventId === event.id;
+    const displayEvent = isMoving ? activeEvent : event;
+    
+    let { start, end } = displayEvent;
+    if (end < start) [start, end] = [end, start];
+
+    const startIndex = dates.findIndex(d => d.toDateString() === start.toDateString());
+    if (startIndex === -1) return null;
 
     const startPos = (start.getHours() + start.getMinutes() / 60) * HOUR_ROW_HEIGHT;
     const endPos = (end.getHours() + end.getMinutes() / 60) * HOUR_ROW_HEIGHT;
 
     const eventStyle = {
-        position: 'absolute',
         left: `${startIndex * DAY_COLUMN_WIDTH + 1}px`,
         top: `${startPos}px`,
-        height: `${endPos - startPos}px`,
+        height: `${Math.max(20, endPos - startPos)}px`,
         width: `${DAY_COLUMN_WIDTH - 2}px`,
     };
-
+    
     return (
-        <div key={event.id} className="event-block" style={eventStyle}>
-            <span className="event-title">{event.title}</span>
+        <div 
+            key={event.id} 
+            className={`event-block ${isMoving ? 'moving' : ''}`} 
+            style={eventStyle}
+            onMouseDown={(e) => isTemporary ? e.stopPropagation() : handleEventMouseDown(e, event)}
+        >
+            <span className="event-title">{displayEvent.title}</span>
         </div>
     );
   };
 
   return (
-    <div className="notion-calendar-container">
+    <div className={`notion-calendar-container ${dragInfo ? 'dragging' : ''}`}>
       <div className="notion-sidebar">
         <div className="sidebar-header">
           <button onClick={handleToday} className="control-button">Today</button>
@@ -427,6 +523,7 @@ const CalendarView = () => {
                 )}
             </div>
 
+            {/* This is the crucial part that was missing */}
             {dates.map(day => (
               <div key={day.toISOString()} ref={day.toDateString() === today.toDateString() ? todayRef : null} className={`day-column ${day.toDateString() === today.toDateString() ? 'today' : ''}`}>
                 {hours.map(hour => <div key={hour} className="hour-slot"></div>)}
@@ -441,20 +538,23 @@ const CalendarView = () => {
                 ></div>
               ))}
             </div>
+            
             <div className="events-layer">
-                {events.map(renderEvent)}
-                {newEvent && renderEvent(newEvent)}
+                {events.map(event => renderEvent(event))}
+                {dragInfo?.mode === 'create' && activeEvent && renderEvent(activeEvent, true)}
             </div>
           </div>
         </div>
       </div>
       <div className="notion-sidebar notion-sidebar-right">
-        {newEvent ? (
+        {activeEvent ? (
             <EventCreator
-                event={newEvent}
+                key={activeEvent.id}
+                event={activeEvent}
                 onSave={handleSaveEvent}
-                onCancel={handleCancelCreateEvent}
-                isDragging={isDragging}
+                onCancel={handleCancelEvent}
+                onDelete={handleDeleteEvent}
+                isDragging={!!dragInfo}
             />
         ) : (
             <div className="right-sidebar-placeholder">

@@ -240,6 +240,10 @@ body {
   cursor: cell;
 }
 
+.notion-grid-container.dragging {
+    cursor: grabbing;
+}
+
 .time-column {
   min-width: 70px;
   max-width: 70px;
@@ -356,10 +360,11 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none;
+    pointer-events: none; /* Let grid handle mouse down */
 }
 
 .event-block {
+    position: absolute; /* Required for positioning */
     background-color: rgba(68, 137, 208, 0.4);
     border-left: 3px solid #4489d0;
     border-radius: 4px;
@@ -369,6 +374,15 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: grab;
+    z-index: 16; /* Ensure events are on top of the grid but below header */
+    pointer-events: auto; /* Allow clicks on events */
+}
+
+.event-block.moving {
+    opacity: 0.7;
+    border-style: dashed;
+    cursor: grabbing;
 }
 
 .event-block .event-title {

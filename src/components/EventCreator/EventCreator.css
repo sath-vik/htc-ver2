@@ -67,3 +67,9 @@
     background-color: #c83e3e;
     color: white;
 }
+
+.event-creator-actions .delete-btn {
+    background-color: #e53935;
+    color: white;
+    margin-right: auto;
+}

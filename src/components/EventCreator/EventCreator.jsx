@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './EventCreator.css';
 
-const EventCreator = ({ event, onSave, onCancel, isDragging }) => {
+const EventCreator = ({ event, onSave, onCancel, onDelete, isDragging }) => {
   const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
 
@@ -52,6 +52,8 @@ const EventCreator = ({ event, onSave, onCancel, isDragging }) => {
     return `${hours}h ${minutes > 0 ? `${minutes}m` : ''}`.trim();
   }
 
+  const isNewEvent = event.id.startsWith('new-');
+
   return (
     <div className="event-creator-panel">
       <h3>{isDragging ? "Creating Event..." : "Edit Event"}</h3>
@@ -76,8 +78,9 @@ const EventCreator = ({ event, onSave, onCancel, isDragging }) => {
       />
       {!isDragging && (
         <div className="event-creator-actions">
+            {!isNewEvent && <button onClick={() => onDelete(event.id)} className="delete-btn">Delete</button>}
           <button onClick={onCancel} className="cancel-btn">Cancel</button>
-          <button onClick={handleSave} className="save-btn">Save</button>
+          <button onClick={handleSave} className="save-btn">{isNewEvent ? 'Save' : 'Update'}</button>
         </div>
       )}
     </div>
