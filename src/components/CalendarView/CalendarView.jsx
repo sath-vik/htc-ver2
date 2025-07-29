@@ -3,10 +3,13 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './CalendarView.css';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import EventCreator from '../EventCreator/EventCreator';
+
 
 const CHUNK_SIZE = 30; // Number of days to load at a time
 const DAY_COLUMN_WIDTH = 150; // The width of a single day column in pixels
 const HOUR_ROW_HEIGHT = 80; // The height of a single hour row in pixels
+const TIME_COLUMN_WIDTH = 70; // The width of the time column on the left
 
 // Generates a chunk of dates before or after a given date
 const generateDateChunk = (baseDate, direction) => {
@@ -66,6 +69,10 @@ const CalendarView = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const scrollTimeout = useRef(null);
   const fetchingLock = useRef(false);
+
+  const [events, setEvents] = useState([]);
+  const [newEvent, setNewEvent] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
 
   const gridRef = useRef(null);
@@ -253,6 +260,105 @@ const CalendarView = () => {
 
   const todayIndex = dates.findIndex(d => d.toDateString() === today.toDateString());
 
+  const getDateFromPosition = (x, y) => {
+    // Adjust x-coordinate for the sticky time column width
+    const dayIndex = Math.floor(x / DAY_COLUMN_WIDTH);
+    if (dayIndex < 0 || dayIndex >= dates.length) return null; // Clicked outside the valid date range
+
+    const date = new Date(dates[dayIndex]);
+  
+    // Calculate total minutes from the top of the day and snap to nearest 15-minute interval
+    const totalMinutes = y / HOUR_ROW_HEIGHT * 60;
+    const snappedTotalMinutes = Math.floor(totalMinutes / 15) * 15;
+
+    const hour = Math.floor(snappedTotalMinutes / 60);
+    const minute = snappedTotalMinutes % 60;
+  
+    date.setHours(hour, minute, 0, 0);
+    return date;
+  };
+  
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return; // Only left-click
+  
+    const gridRect = gridRef.current.getBoundingClientRect();
+    // Calculate x relative to the start of the days grid (not the container)
+    const x = e.clientX - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
+    const y = e.clientY - gridRect.top + gridRef.current.scrollTop;
+
+    if (x < 0) return; // Ignore clicks on the time column
+  
+    const startDate = getDateFromPosition(x, y);
+    if (!startDate) return;
+  
+    setNewEvent({
+      id: `new-${Date.now()}`,
+      start: startDate,
+      end: startDate,
+      title: '',
+      description: '',
+    });
+    setIsDragging(true);
+  };
+  
+  const handleMouseMove = (e) => {
+    if (!isDragging || !newEvent) return;
+  
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const x = e.clientX - gridRect.left - TIME_COLUMN_WIDTH + gridRef.current.scrollLeft;
+    const y = e.clientY - gridRect.top + gridRef.current.scrollTop;
+  
+    const currentDate = getDateFromPosition(x, y);
+    if (!currentDate) return;
+  
+    setNewEvent(prev => ({
+      ...prev,
+      end: currentDate,
+    }));
+  };
+  
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleSaveEvent = (eventData) => {
+    setEvents(prev => [...prev.filter(e => e.id !== eventData.id), eventData]);
+    setNewEvent(null);
+  };
+
+  const handleCancelCreateEvent = () => {
+    setNewEvent(null);
+  };
+
+  const renderEvent = (event) => {
+    const startIndex = dates.findIndex(d => d.toDateString() === event.start.toDateString());
+    if (startIndex === -1) return null;
+
+    let start = event.start;
+    let end = event.end;
+
+    if(end < start) {
+        [start, end] = [end, start];
+    }
+
+    const startPos = (start.getHours() + start.getMinutes() / 60) * HOUR_ROW_HEIGHT;
+    const endPos = (end.getHours() + end.getMinutes() / 60) * HOUR_ROW_HEIGHT;
+
+    const eventStyle = {
+        position: 'absolute',
+        left: `${startIndex * DAY_COLUMN_WIDTH + 1}px`,
+        top: `${startPos}px`,
+        height: `${endPos - startPos}px`,
+        width: `${DAY_COLUMN_WIDTH - 2}px`,
+    };
+
+    return (
+        <div key={event.id} className="event-block" style={eventStyle}>
+            <span className="event-title">{event.title}</span>
+        </div>
+    );
+  };
+
   return (
     <div className="notion-calendar-container">
       <div className="notion-sidebar">
@@ -292,7 +398,15 @@ const CalendarView = () => {
           </div>
         </div>
         
-        <div className="notion-grid-container" ref={gridRef} onScroll={handleGridScroll}>
+        <div 
+            className="notion-grid-container" 
+            ref={gridRef} 
+            onScroll={handleGridScroll}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+        >
           <div className="time-column">
             {hours.map(hour => (
               <div key={hour} className="time-label">
@@ -327,18 +441,27 @@ const CalendarView = () => {
                 ></div>
               ))}
             </div>
+            <div className="events-layer">
+                {events.map(renderEvent)}
+                {newEvent && renderEvent(newEvent)}
+            </div>
           </div>
         </div>
       </div>
       <div className="notion-sidebar notion-sidebar-right">
-        <div className="sidebar-header">
-          <button onClick={handleToday} className="control-button">Today</button>
-        </div>
-        <Calendar
-          value={currentDate}
-          onChange={setCurrentDate}
-          className="notion-small-calendar"
-        />
+        {newEvent ? (
+            <EventCreator
+                event={newEvent}
+                onSave={handleSaveEvent}
+                onCancel={handleCancelCreateEvent}
+                isDragging={isDragging}
+            />
+        ) : (
+            <div className="right-sidebar-placeholder">
+                <h3>No meeting selected</h3>
+                <p>Click and drag on the calendar to create a new event, or click an existing one to edit it.</p>
+            </div>
+        )}
       </div>
     </div>
   );

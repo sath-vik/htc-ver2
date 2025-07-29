@@ -73,6 +73,15 @@ body {
   font-weight: bold;
 }
 
+.right-sidebar-placeholder {
+    padding: 20px;
+    text-align: center;
+    color: #8a8a8a;
+}
+.right-sidebar-placeholder h3 {
+    color: #e2e2e2;
+}
+
 
 /* --- Main Calendar View --- */
 .notion-main-view {
@@ -228,6 +237,7 @@ body {
   position: relative;
   display: flex;
   align-items: flex-start;
+  cursor: cell;
 }
 
 .time-column {
@@ -338,4 +348,29 @@ body {
     background-color: #e53935;
     top: 50%;
     transform: translateY(-50%);
+}
+
+.events-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.event-block {
+    background-color: rgba(68, 137, 208, 0.4);
+    border-left: 3px solid #4489d0;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 14px;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-block .event-title {
+    font-weight: 500;
 }
